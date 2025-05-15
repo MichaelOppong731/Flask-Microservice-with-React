@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  gateway-service:
+    build: ./gateway-service
+    container_name: gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_SVC_URL: http://auth-service:5000
+      AWS_REGION: eu-west-1
+      S3_BUCKET_VIDEOS: your-video-buckets
+      S3_BUCKET_MP3S: your-mp3-uckets
+      SQS_VIDEO_QUEUE_URL: https://sqs.eu-west-1.amazonaws.com/180294222815/your_sqs_url.fifo
+    depends_on:
+      - auth-service
+      
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+       - "5000:5000"
+    environment:
+       DATABASE_HOST: capstone.c18g4q48md9n.eu-west-1.rds.amazonaws.com
+       DATABASE_NAME: auth
+       DATABASE_USER: root
+       DATABASE_PASSWORD: rootpassword
+       AUTH_TABLE: auth_user
+       JWT_SECRET: your-super-secret-jwt-key-2024!@#$%^&*()
+ 
+  converter-service:
+    build: ./converter-service
+    container_name: converter-service
+    environment:
+      AWS_REGION: eu-west-1
+      S3_BUCKET_VIDEOS: your-video-buckets
+      S3_BUCKET_MP3S: your-mp3-uckets
+      SQS_VIDEO_QUEUE_URL: https://sqs.eu-west-1.amazonaws.com/180294222815/your_sqs_url.fifo
+      SQS_MP3_QUEUE_URL: https://sqs.eu-west-1.amazonaws.com/180294222815/mp3_sqs_queue.fifo
+    depends_on:
+      - gateway-service
+ 
