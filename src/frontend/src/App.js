@@ -46,8 +46,8 @@ function App() {
   useEffect(() => {
     if (authenticated) {
       localStorage.setItem('authenticated', 'true');
-      if (token) {
-        localStorage.setItem('token', token);
+    if (token) {
+      localStorage.setItem('token', token);
       }
       if (user) {
         localStorage.setItem('user', user);

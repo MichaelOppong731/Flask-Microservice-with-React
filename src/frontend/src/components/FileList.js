@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8082';
+const API_BASE_URL = process.env.REACT_APP_DOWNLOAD_SERVICE_URL || 'http://localhost:8082';
 
 function FileList({ user, token, userData, files, onFileDeleted }) {
   const [downloading, setDownloading] = useState({});

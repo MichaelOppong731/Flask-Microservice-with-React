@@ -3,7 +3,7 @@ import FileUpload from './FileUpload';
 import FileList from './FileList';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8082';
+const API_BASE_URL = process.env.REACT_APP_DOWNLOAD_SERVICE_URL || 'http://localhost:8082';
 
 function Dashboard({ user, token, userData }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -74,7 +74,7 @@ function Dashboard({ user, token, userData }) {
         <FileUpload user={user} token={token} userData={userData} onFileUploaded={handleFileUploaded} />
         <FileList 
           user={user}
-          token={token}
+          token={token} 
           userData={userData}
           files={uploadedFiles} 
           onFileDeleted={handleFileDeleted}

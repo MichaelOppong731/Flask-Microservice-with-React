@@ -1,8 +1,16 @@
-import boto3
 import os
 import json
+import boto3
+from botocore.exceptions import ClientError
 
 def notification(message):
+    """
+    Process the notification message and send via SNS
+    Args:
+        message: JSON string containing notification details
+    Returns:
+        None on success, error message on failure
+    """
     try:
         # Parse the incoming message
         message_data = json.loads(message)
@@ -16,15 +24,13 @@ def notification(message):
             return "Missing required fields: mp3_s3_key or username"
         
         # Initialize SNS client
-        sns_client = boto3.client(
-            "sns",
-            region_name=os.environ.get("AWS_REGION", "eu-west-1")
-        )
+        aws_region = os.environ["AWS_REGION"]
+        sns_client = boto3.client("sns", region_name=aws_region)
         
         # Get SNS topic ARN from environment
-        topic_arn = os.environ.get("SNS_TOPIC_ARN", "arn:aws:sns:eu-west-1:180294222815:Audio_Update")
+        topic_arn = os.environ["SNS_TOPIC_ARN"]
         
-        # Prepare email message (without showing the audio key)
+        # Prepare email message
         subject = "MP3 Download Ready"
         message_body = f"""
 Hello {username},
@@ -54,12 +60,15 @@ Video to MP3 Converter Service
             }
         )
         
-        print(f"SNS message sent successfully. MessageId: {response['MessageId']}")
+        print(f"✅ SNS message sent successfully. MessageId: {response['MessageId']}")
         return None
         
     except json.JSONDecodeError as e:
         print(f"JSON parsing error: {str(e)}")
         return str(e)
-    except Exception as e:
+    except ClientError as e:
         print(f"Error sending SNS notification: {str(e)}")
+        return str(e)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
         return str(e)

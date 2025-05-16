@@ -1,24 +1,40 @@
-import jwt, datetime, os
+import os
 import psycopg2
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+import jwt
+from datetime import datetime, timedelta, timezone
+from werkzeug.security import generate_password_hash, check_password_hash
 
+# Initialize Flask application
 server = Flask(__name__)
-# Enable CORS for all routes
 CORS(server)
 
+# Load configuration from environment variables
+db_host = os.environ["DATABASE_HOST"]
+db_name = os.environ["DATABASE_NAME"]
+db_user = os.environ["DATABASE_USER"]
+db_password = os.environ["DATABASE_PASSWORD"]
+auth_table = os.environ["AUTH_TABLE"]
+jwt_secret = os.environ["JWT_SECRET"]
+
+print("Initializing Auth Service...")
+print(f"Database Host: {db_host}")
+print(f"Database Name: {db_name}")
+print(f"Auth Table: {auth_table}")
+
 def get_db_connection():
-    conn = psycopg2.connect(host=os.getenv('DATABASE_HOST', 'capstone.c18g4q48md9n.eu-west-1.rds.amazonaws.com'),
-                            database=os.getenv('DATABASE_NAME', 'auth'),
-                            user=os.getenv('DATABASE_USER', 'root'),
-                            password=os.getenv('DATABASE_PASSWORD', 'rootpassword'),
-                            port=5432)
+    conn = psycopg2.connect(host=db_host,
+                           database=db_name,
+                           user=db_user,
+                           password=db_password,
+                           port=5432)
     return conn
 
 
 @server.route('/login', methods=['POST'])
 def login():
-    auth_table_name = os.getenv('AUTH_TABLE', 'auth_user')
+    auth_table_name = auth_table
     auth = request.authorization
     if not auth or not auth.username or not auth.password:
         return 'Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'}
@@ -39,7 +55,7 @@ def login():
         if auth.username != email or auth.password != password:
             return 'Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'}
         else:
-            token = CreateJWT(auth.username, os.getenv('JWT_SECRET', 'your-super-secret-jwt-key-2024!@#$%^&*()'))
+            token = CreateJWT(auth.username, jwt_secret)
             print(f"Generated token for {auth.username}: {token}")
             # Return the token as plain text with proper content type
             response = Response(token, content_type='text/plain')
@@ -49,8 +65,8 @@ def CreateJWT(username, secret):
     token = jwt.encode(
         {
             "username": username,
-            "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
-            "iat": datetime.datetime.now(tz=datetime.timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(days=1),
+            "iat": datetime.now(timezone.utc),
             "authenticated": True,
         },
         secret,
@@ -72,7 +88,7 @@ def validate():
 
     try:
         encoded_jwt = auth_header.split(' ')[1]
-        decoded_jwt = jwt.decode(encoded_jwt, os.getenv('JWT_SECRET', 'your-super-secret-jwt-key-2024!@#$%^&*()'), algorithms=["HS256"])
+        decoded_jwt = jwt.decode(encoded_jwt, secret, algorithms=["HS256"])
         return jsonify(decoded_jwt), 200
     except jwt.ExpiredSignatureError:
         return jsonify({'error': 'Token has expired'}), 401

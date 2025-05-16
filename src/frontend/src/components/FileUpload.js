@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 // Updated API endpoint for upload service
-const UPLOAD_SERVICE_URL = 'http://localhost:8081';
+const UPLOAD_SERVICE_URL = process.env.REACT_APP_UPLOAD_SERVICE_URL || 'http://localhost:8081';
 
 function FileUpload({ user, token, userData, onFileUploaded }) {
   const [file, setFile] = useState(null);
@@ -44,7 +44,7 @@ function FileUpload({ user, token, userData, onFileUploaded }) {
 
     try {
       const headers = {
-        'Content-Type': 'multipart/form-data',
+          'Content-Type': 'multipart/form-data',
       };
       
       // Add token if available

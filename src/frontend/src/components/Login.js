@@ -54,7 +54,7 @@ function Login({ setAuthenticated, setUser, setToken, setUserData }) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', decoded.username || email);
         
-        setToken(token);
+      setToken(token);
         setUser(decoded.username || email);
         setUserData(decoded);
         setAuthenticated(true);

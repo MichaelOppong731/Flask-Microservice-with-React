@@ -14,7 +14,7 @@ MarkupSafe
 mccabe
 parso
 platformdirs
-psycopg2
+psycopg2-binary
 pycparser
 PyJWT
 pylint
@@ -25,3 +25,4 @@ Werkzeug
 wrapt
 zipp
 flask-cors
+python-dotenv

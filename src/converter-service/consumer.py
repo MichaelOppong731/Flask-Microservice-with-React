@@ -8,13 +8,14 @@ from botocore.exceptions import ClientError
 
 def main():
     # Initialize boto3 clients using IAM roles
-    s3_client = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "eu-west-1"))
-    sqs_client = boto3.client("sqs", region_name=os.environ.get("AWS_REGION", "eu-west-1"))
+    aws_region = os.environ["AWS_REGION"]
+    s3_client = boto3.client("s3", region_name=aws_region)
+    sqs_client = boto3.client("sqs", region_name=aws_region)
 
-    s3_video_bucket = os.environ.get("S3_BUCKET_VIDEOS", "your-video-buckets")
-    s3_mp3_bucket = os.environ.get("S3_BUCKET_MP3S", 'your-mp3-uckets')
-    video_queue_url = os.environ.get("SQS_VIDEO_QUEUE_URL", "https://sqs.eu-west-1.amazonaws.com/180294222815/your_sqs_url.fifo")
-    mp3_queue_url = os.environ.get("SQS_MP3_QUEUE_URL", "https://sqs.eu-west-1.amazonaws.com/180294222815/mp3_sqs_queue.fifo")
+    s3_video_bucket = os.environ["S3_BUCKET_VIDEOS"]
+    s3_mp3_bucket = os.environ["S3_BUCKET_MP3S"]
+    video_queue_url = os.environ["SQS_VIDEO_QUEUE_URL"]
+    mp3_queue_url = os.environ["SQS_MP3_QUEUE_URL"]
 
     print("✅ Initialized S3 and SQS clients")
     print("📦 S3 Video Bucket:", s3_video_bucket)
