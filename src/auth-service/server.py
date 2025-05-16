@@ -1,8 +1,11 @@
 import jwt, datetime, os
 import psycopg2
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
 
 server = Flask(__name__)
+# Enable CORS for all routes
+CORS(server)
 
 def get_db_connection():
     conn = psycopg2.connect(host=os.getenv('DATABASE_HOST', 'capstone.c18g4q48md9n.eu-west-1.rds.amazonaws.com'),
@@ -36,19 +39,27 @@ def login():
         if auth.username != email or auth.password != password:
             return 'Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'}
         else:
-            return CreateJWT(auth.username, os.getenv('JWT_SECRET', 'your-super-secret-jwt-key-2024!@#$%^&*()'), True)
+            token = CreateJWT(auth.username, os.getenv('JWT_SECRET', 'your-super-secret-jwt-key-2024!@#$%^&*()'))
+            print(f"Generated token for {auth.username}: {token}")
+            # Return the token as plain text with proper content type
+            response = Response(token, content_type='text/plain')
+            return response
 
-def CreateJWT(username, secret, authz):
-    return jwt.encode(
+def CreateJWT(username, secret):
+    token = jwt.encode(
         {
             "username": username,
             "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
             "iat": datetime.datetime.now(tz=datetime.timezone.utc),
-            "admin": authz,
+            "authenticated": True,
         },
         secret,
         algorithm="HS256",
     )
+    # Ensure the token is a string (some versions of PyJWT return bytes)
+    if isinstance(token, bytes):
+        return token.decode('utf-8')
+    return token
 
 @server.route('/validate', methods=['POST'])
 def validate():

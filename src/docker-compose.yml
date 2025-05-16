@@ -15,6 +15,29 @@ services:
     depends_on:
       - auth-service
       
+  upload-service:
+    build: ./upload-service
+    container_name: upload-service
+    ports:
+      - "8081:8081"
+    environment:
+      AWS_REGION: eu-west-1
+      S3_BUCKET_VIDEOS: your-video-buckets
+      SQS_VIDEO_QUEUE_URL: https://sqs.eu-west-1.amazonaws.com/180294222815/your_sqs_url.fifo
+    depends_on:
+      - auth-service
+      
+  download-service:
+    build: ./download-service
+    container_name: download-service
+    ports:
+      - "8082:8082"
+    environment:
+      AWS_REGION: eu-west-1
+      S3_BUCKET_MP3S: your-mp3-uckets
+    depends_on:
+      - auth-service
+      
   auth-service:
     build: ./auth-service
     container_name: auth-service
@@ -38,5 +61,6 @@ services:
       SQS_VIDEO_QUEUE_URL: https://sqs.eu-west-1.amazonaws.com/180294222815/your_sqs_url.fifo
       SQS_MP3_QUEUE_URL: https://sqs.eu-west-1.amazonaws.com/180294222815/mp3_sqs_queue.fifo
     depends_on:
-      - gateway-service
+      - upload-service
+      - download-service
  

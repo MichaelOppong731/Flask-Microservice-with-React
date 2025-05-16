@@ -3,9 +3,9 @@ import FileUpload from './FileUpload';
 import FileList from './FileList';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'http://localhost:8082';
 
-function Dashboard({ token, user }) {
+function Dashboard({ user, token, userData }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
   const handleFileUploaded = (fileInfo) => {
@@ -19,11 +19,17 @@ function Dashboard({ token, user }) {
   // Check conversion status for processing files
   const checkFileStatus = useCallback(async (file) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/check-audio/${file.videoKey}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const config = {};
+      let url = `${API_BASE_URL}/check-audio/${file.videoKey}`;
+      
+      // Use JWT token if available
+      if (token) {
+        config.headers = {
+          'Authorization': `Bearer ${token}`
+        };
+      }
+      
+      const response = await axios.get(url, config);
       
       return {
         status: response.data.status,
@@ -65,9 +71,11 @@ function Dashboard({ token, user }) {
     <div className="dashboard">
       <h2>Welcome, {user}!</h2>
       <div className="dashboard-content">
-        <FileUpload token={token} onFileUploaded={handleFileUploaded} />
+        <FileUpload user={user} token={token} userData={userData} onFileUploaded={handleFileUploaded} />
         <FileList 
-          token={token} 
+          user={user}
+          token={token}
+          userData={userData}
           files={uploadedFiles} 
           onFileDeleted={handleFileDeleted}
         />

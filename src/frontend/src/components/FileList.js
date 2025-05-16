@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'http://localhost:8082';
 
-function FileList({ token, files, onFileDeleted }) {
+function FileList({ user, token, userData, files, onFileDeleted }) {
   const [downloading, setDownloading] = useState({});
+  const isAuthenticated = userData && userData.authenticated === true;
 
   const handleDownload = async (file) => {
+    // Ensure user is authenticated
+    if (!isAuthenticated) {
+      alert('You need to be authenticated to download files.');
+      return;
+    }
+    
     const audioKey = file.audioKey;
     
     if (!audioKey) {
@@ -17,21 +24,29 @@ function FileList({ token, files, onFileDeleted }) {
     setDownloading(prev => ({ ...prev, [audioKey]: true }));
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/download?fid=${audioKey}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const config = {
         responseType: 'blob',
-      });
+      };
+      
+      let url = `${API_BASE_URL}/download?fid=${audioKey}`;
+      
+      // Add authorization header if token is available
+      if (token) {
+        config.headers = {
+          'Authorization': `Bearer ${token}`
+        };
+      }
+      
+      const response = await axios.get(url, config);
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
+      link.href = downloadUrl;
       link.setAttribute('download', `${file.name}.mp3`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error('Download error:', err);
       alert('Error downloading file. File may not be ready yet.');
@@ -41,6 +56,12 @@ function FileList({ token, files, onFileDeleted }) {
   };
 
   const handleDelete = (file) => {
+    // Ensure user is authenticated
+    if (!isAuthenticated) {
+      alert('You need to be authenticated to remove files.');
+      return;
+    }
+    
     if (window.confirm(`Are you sure you want to remove "${file.name}" from the list?`)) {
       // Just remove from frontend, don't delete from S3
       onFileDeleted(file.videoKey);
@@ -59,6 +80,15 @@ function FileList({ token, files, onFileDeleted }) {
         return '📄';
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="file-list">
+        <h3>Your Files</h3>
+        <p>You need to be authenticated to view files.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="file-list">

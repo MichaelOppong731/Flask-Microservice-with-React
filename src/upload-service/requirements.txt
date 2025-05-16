@@ -1,0 +1,11 @@
+Flask
+Werkzeug
+boto3
+prometheus-client
+flask-cors
+requests
+python-dotenv
+pytest
+black
+flask_prometheus_metrics
+python-json-logger
