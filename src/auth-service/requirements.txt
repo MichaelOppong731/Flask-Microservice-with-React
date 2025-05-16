@@ -26,3 +26,9 @@ wrapt
 zipp
 flask-cors
 python-dotenv
+bcrypt
+prometheus-client
+pytest
+black
+flask_prometheus_metrics
+python-json-logger

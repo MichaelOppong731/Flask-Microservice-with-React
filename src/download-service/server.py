@@ -1,7 +1,7 @@
 import os, boto3
 from flask import Flask, request, jsonify, send_file
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from prometheus_client import Counter
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from flask_cors import CORS
 from io import BytesIO
 import logging
@@ -22,6 +22,13 @@ CORS(server)
 download_count = Counter('download_requests_total', 'Total number of download requests')
 status_count = Counter('status_requests_total', 'Total number of status check requests')
 error_count = Counter('download_service_errors_total', 'Total number of errors in download service')
+download_duration = Histogram('download_duration_seconds', 'Time spent processing downloads')
+file_size = Histogram('download_file_size_bytes', 'Size of downloaded files')
+
+# Add metrics endpoint
+@server.route('/metrics')
+def metrics():
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # Load configuration from environment variables
 print("\n=== Download Service Starting ===")
@@ -51,6 +58,7 @@ class DownloadService:
         print(f"\n🔍 Validating download request for file: {file_id}")
         if not file_id:
             print("❌ Missing file ID")
+            error_count.inc()
             return False, ("fid is required", 400)
         print("✅ File ID validated")
         return True, None
@@ -59,8 +67,10 @@ class DownloadService:
         print(f"\n📥 Downloading file: {file_id}")
         try:
             print(f"Fetching from bucket: {self.s3_bucket}")
-            s3_object = self.s3_client.get_object(Bucket=self.s3_bucket, Key=file_id)
-            file_stream = BytesIO(s3_object['Body'].read())
+            with download_duration.time():
+                s3_object = self.s3_client.get_object(Bucket=self.s3_bucket, Key=file_id)
+                file_stream = BytesIO(s3_object['Body'].read())
+                file_size.observe(s3_object['ContentLength'])
             print("✅ File downloaded successfully")
             return send_file(file_stream, download_name=f"{file_id}")
         except Exception as err:
@@ -89,6 +99,7 @@ class StatusService:
     
     def check_audio_status(self, video_key):
         print(f"\n=== Checking Status for {video_key} ===")
+        status_count.inc()
         audio_key = f"{video_key}.mp3"
         
         try:

@@ -1,7 +1,7 @@
 import os, boto3, json, uuid, traceback
 from flask import Flask, request, jsonify
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from prometheus_client import Counter
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from flask_cors import CORS
 from io import BytesIO
 import logging
@@ -17,9 +17,17 @@ logger = logging.getLogger(__name__)
 server = Flask(__name__)
 CORS(server)
 
-# Prometheus metrics for monitoring
+# Prometheus metrics
 upload_count = Counter('upload_requests_total', 'Total number of upload requests')
 error_count = Counter('upload_errors_total', 'Total number of upload errors')
+upload_duration = Histogram('upload_duration_seconds', 'Time spent processing uploads')
+file_size = Histogram('upload_file_size_bytes', 'Size of uploaded files')
+sqs_message_count = Counter('sqs_messages_sent_total', 'Total number of SQS messages sent')
+
+# Add metrics endpoint
+@server.route('/metrics')
+def metrics():
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # Load configuration from environment variables
 print("\n=== Upload Service Starting ===")
@@ -54,6 +62,7 @@ class UploadService:
         print("\n🔍 Validating upload request...")
         if not user_data_str:
             print("❌ Missing user data")
+            error_count.inc()
             return False, ("Missing user data", 401)
             
         try:
@@ -61,10 +70,12 @@ class UploadService:
             print("✅ User data validated")
         except Exception:
             print("❌ Invalid user data format")
+            error_count.inc()
             return False, ("Invalid user data format", 400)
         
         if len(files) > 1 or len(files) < 1:
             print("❌ Invalid number of files")
+            error_count.inc()
             return False, ("exactly 1 file required", 400)
         
         return True, user_data
@@ -75,7 +86,15 @@ class UploadService:
             file_id = str(uuid.uuid4())
             print(f"Generated file ID: {file_id}")
             print(f"Uploading to bucket: {self.s3_bucket}")
-            self.s3_client.upload_fileobj(file, self.s3_bucket, file_id)
+            
+            # Record file size
+            file.seek(0, os.SEEK_END)
+            size = file.tell()
+            file.seek(0)
+            file_size.observe(size)
+            
+            with upload_duration.time():
+                self.s3_client.upload_fileobj(file, self.s3_bucket, file_id)
             print("✅ File uploaded to S3 successfully")
         except Exception as err:
             print("❌ S3 Upload Error:")
@@ -100,6 +119,7 @@ class UploadService:
                 MessageGroupId="video-group",
                 MessageDeduplicationId=str(uuid.uuid4())
             )
+            sqs_message_count.inc()
             print("✅ Message sent to SQS successfully")
         except Exception as err:
             print(f"❌ SQS Error: {err}")
@@ -119,6 +139,7 @@ class UploadService:
         Returns:
             Response tuple (response, status_code)
         """
+        print("\n=== New Upload Request ===")
         upload_count.inc()
         
         # Validate request
@@ -143,7 +164,6 @@ upload_service = UploadService(s3_client, s3_bucket_videos, sqs_client, sqs_queu
 
 @server.route("/upload", methods=["POST"])
 def upload():
-    print("\n=== New Upload Request ===")
     return upload_service.handle_upload(request.files, request.form.get('user_data'))
 
 @server.route("/health", methods=["GET"])

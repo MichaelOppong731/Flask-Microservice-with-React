@@ -28,3 +28,11 @@ typing-extensions
 urllib3
 wrapt
 boto3
+flask
+flask-cors
+prometheus-client
+python-dotenv
+pytest
+black
+flask_prometheus_metrics
+python-json-logger

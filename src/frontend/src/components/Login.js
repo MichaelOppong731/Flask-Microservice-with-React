@@ -16,34 +16,28 @@ function Login({ setAuthenticated, setUser, setToken, setUserData }) {
     setError('');
 
     try {
-      console.log('Attempting login with:', email);
-      // Use Basic Authentication with your auth service
+      // Create base64 encoded credentials for basic auth
       const credentials = btoa(`${email}:${password}`);
-      console.log('Encoded credentials:', credentials);
       
-      console.log('Sending login request to:', `${AUTH_API_URL}/login`);
-      const response = await axios.post(`${AUTH_API_URL}/login`, {}, {
+      const response = await axios.post(`${AUTH_API_URL}/login`, null, {
         headers: {
           'Authorization': `Basic ${credentials}`,
-        },
+          'Content-Type': 'application/json'
+        }
       });
 
-      console.log('Login response:', response);
-      // Get the token from the response, handling different possible formats
-      let token;
-      if (typeof response.data === 'string') {
-        token = response.data;
-      } else if (typeof response.data === 'object' && response.data.token) {
-        token = response.data.token;
-      } else {
-        console.error('Unexpected token format:', response.data);
-        setError('Unexpected response from server');
-        setLoading(false);
-        return;
-      }
+      console.log('Response:', response);
       
+      // Get the token from the response
+      const token = response.data;
       console.log('Extracted token:', token);
       
+      if (!token) {
+        console.error('No token in response');
+        setError('No token received from server');
+        return;
+      }
+
       try {
         // Decode the token to get user information
         console.log('Attempting to decode token');
@@ -54,7 +48,7 @@ function Login({ setAuthenticated, setUser, setToken, setUserData }) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', decoded.username || email);
         
-      setToken(token);
+        setToken(token);
         setUser(decoded.username || email);
         setUserData(decoded);
         setAuthenticated(true);
@@ -69,12 +63,14 @@ function Login({ setAuthenticated, setUser, setToken, setUserData }) {
         console.error('Error response data:', err.response.data);
         console.error('Error response status:', err.response.status);
         console.error('Error response headers:', err.response.headers);
+        setError('Invalid credentials');
       } else if (err.request) {
         console.error('No response received:', err.request);
+        setError('No response from server');
       } else {
         console.error('Error setting up request:', err.message);
+        setError('Error setting up request');
       }
-      setError('Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -92,6 +88,7 @@ function Login({ setAuthenticated, setUser, setToken, setUserData }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            placeholder="Enter your email"
           />
         </div>
         <div className="form-group">
@@ -102,6 +99,8 @@ function Login({ setAuthenticated, setUser, setToken, setUserData }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            placeholder="Enter your password"
+            minLength="6"
           />
         </div>
         {error && <div className="error">{error}</div>}
